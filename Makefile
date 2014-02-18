@@ -4,7 +4,7 @@ PACKAGE=dbgfm
 SGA=sga
 
 # Options
-CXXFLAGS=-g -O3
+CXXFLAGS=-g -O3 -fPIC
 
 # Directories
 prefix=/usr/local
@@ -15,11 +15,11 @@ pkgincludedir=$(includedir)/$(PACKAGE)
 
 # Programs and libraries to build
 PROGRAMS=dbgfm bwtdisk-prepare
-LIBRARIES=libdbgfm.a
+LIBRARIES=libdbgfm.a libdbgfm.so
 
 # Targets
 
-all: $(PROGRAMS)
+all: $(LIBRARIES) $(PROGRAMS)
 
 clean:
 	rm -f $(LIBRARIES) $(PROGRAMS) *.o
@@ -49,13 +49,20 @@ HEADERS = alphabet.h bwtdisk_reader.h dbg_query.h fm_index.h \
 	packed_table_decoder.h sga_bwt_reader.h sga_rlunit.h \
 	stream_encoding.h utility.h
 
-# Build libdbgfm.a
+# Library objects
 
-libdbgfm_a_OBJECTS = alphabet.o bwtdisk_reader.o dbg_query.o \
+libdbgfm_OBJECTS = alphabet.o bwtdisk_reader.o dbg_query.o \
 	fm_index.o fm_index_builder.o sga_bwt_reader.o utility.o
 
-libdbgfm.a: $(libdbgfm_a_OBJECTS) $(HEADERS)
-	$(AR) crs $@ $(libdbgfm_a_OBJECTS)
+# Build libdbgfm.a
+
+libdbgfm.a: $(libdbgfm_OBJECTS) $(HEADERS)
+	$(AR) crs $@ $(libdbgfm_OBJECTS)
+	
+# Build libdbgfm.so
+
+libdbgfm.so: $(libdbgfm_OBJECTS) $(HEADERS)
+	$(LD) $(LDFLAGS) -shared -o libdbgfm.so  $(libdbgfm_OBJECTS)
 
 # Build dbgfm
 
