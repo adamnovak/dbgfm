@@ -1,4 +1,5 @@
 PACKAGE=dbgfm
+JAVA_PACKAGE=uk.ac.sanger.$(PACKAGE)
 
 # Programs
 SGA=sga
@@ -12,17 +13,28 @@ bindir=$(prefix)/bin
 includedir=$(prefix)/include
 libdir=$(prefix)/lib
 pkgincludedir=$(includedir)/$(PACKAGE)
+# Where to find JDK's /include for Java bindings
+javaincludedir=$(JAVA_HOME)/include
+# Where to find platform-specific JNI things
+javaplatformincludedir=$(javaincludedir)/linux
 
 # Programs and libraries to build
 PROGRAMS=dbgfm bwtdisk-prepare
 LIBRARIES=libdbgfm.a libdbgfm.so
+# We build a version of the .so that includes SWIG-generated wrapper code.
+JAVA_LIBRARIES=libdbgfmj.so
+JARS=libdbgfm.jar
 
 # Targets
 
 all: $(LIBRARIES) $(PROGRAMS)
 
+# Target to build Java bindings
+java: $(JARS)
+
 clean:
-	rm -f $(LIBRARIES) $(PROGRAMS) *.o
+	rm -f $(LIBRARIES) $(JAVA_LIBRARIES) $(PROGRAMS) $(JARS) *.o *_wrap.cxx
+	rm -Rf java/ jar/
 
 install: $(PROGRAMS)
 	install $(PROGRAMS) $(DESTDIR)$(bindir)
@@ -63,6 +75,22 @@ libdbgfm.a: $(libdbgfm_OBJECTS) $(HEADERS)
 
 libdbgfm.so: $(libdbgfm_OBJECTS) $(HEADERS)
 	$(LD) $(LDFLAGS) -shared -o libdbgfm.so  $(libdbgfm_OBJECTS)
+	
+# Java bindings objects
+libdbgfmj_OBJECTS = $(libdbgfm_OBJECTS) fm_index_wrap.o
+
+# Build libdbgfmj.so
+
+libdbgfmj.so: $(libdbgfmj_OBJECTS) $(HEADERS)
+	$(LD) $(LDFLAGS) -shared -o libdbgfmj.so  $(libdbgfmj_OBJECTS)
+	
+# Build libdbgfm.jar
+
+libdbgfm.jar: $(JAVA_LIBRARIES)
+	mkdir -p jar
+	javac java/*.java -d jar
+	cp $(JAVA_LIBRARIES) jar/
+	jar cf $@ -C jar .
 
 # Build dbgfm
 
@@ -87,3 +115,13 @@ chr20.fa.gz:
 
 %.dbgfm: %.bwtdisk dbgfm
 	./dbgfm $*
+
+# Build rule for SWIG files
+	
+%_wrap.o: %_wrap.cxx
+	$(CXX) $(INCLUDES) -I$(javaincludedir) -I$(javaplatformincludedir) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $^
+	
+%_wrap.cxx: %.i
+	mkdir -p java
+	swig -c++ -java -outdir java -package $(JAVA_PACKAGE) $^
+	
