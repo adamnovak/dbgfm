@@ -1,4 +1,7 @@
 %module fm_index
+%include "std_string.i"
+%include "std_pair.i"
+%template(SizeTPair) std::pair<size_t, size_t>; 
 %{
 #include "fm_index.h"
 %}
